@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-treino-v1";
+const CACHE_NAME = "meu-treino-v2";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -7,7 +7,21 @@ const FILES_TO_CACHE = [
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png"
+  "./icons/apple-touch-icon.png",
+  "./cats/happy.jpg",
+  "./cats/happy3.jpg",
+  "./cats/happy4.jpg",
+  "./cats/happy6.jpg",
+  "./cats/happy7.jpg",
+  "./cats/neutral.jpg",
+  "./cats/neutral2.jpg",
+  "./cats/neutral3.jpg",
+  "./cats/neutral4.jpg",
+  "./cats/neutral5.jpg",
+  "./cats/neutral7.jpg",
+  "./cats/sad.jpg",
+  "./cats/sad3.jpg",
+  "./cats/sad5.jpg"
 ];
 
 self.addEventListener("install", (event) => {

@@ -27,6 +27,25 @@ const FRASES_DESCANSO = [
   "descansa mt mt mt meu amorzinho",
 ];
 
+/* ---------- gatinho do dia ---------- */
+
+const GATINHOS = [
+  "cats/happy.jpg",
+  "cats/happy3.jpg",
+  "cats/happy4.jpg",
+  "cats/happy6.jpg",
+  "cats/happy7.jpg",
+  "cats/neutral.jpg",
+  "cats/neutral2.jpg",
+  "cats/neutral3.jpg",
+  "cats/neutral4.jpg",
+  "cats/neutral5.jpg",
+  "cats/neutral7.jpg",
+  "cats/sad.jpg",
+  "cats/sad3.jpg",
+  "cats/sad5.jpg",
+];
+
 /* ---------- dias da semana ---------- */
 
 const DIAS = [
@@ -117,9 +136,18 @@ function dayOfYear(date) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
+function seedDoDia() {
+  return dayOfYear(new Date());
+}
+
 function fraseDoDia() {
-  const idx = dayOfYear(new Date()) % FRASES_MOTIVACIONAIS.length;
+  const idx = seedDoDia() % FRASES_MOTIVACIONAIS.length;
   return FRASES_MOTIVACIONAIS[idx];
+}
+
+function gatoDoDia() {
+  const idx = seedDoDia() % GATINHOS.length;
+  return GATINHOS[idx];
 }
 
 function fraseDescansoAleatoria() {
@@ -141,16 +169,14 @@ function computeStreak() {
   const log = load(STORAGE_KEYS.log, {});
   const today = todayISO();
 
-  // encontrar a data mais recente com registro, olhando no máximo os últimos 3 anos
+// encontrar a data mais recente com registro, aceitando no máximo 1 dia de gap
+  // (hoje sem registro ainda é ok, contanto que ontem tenha)
   let lastDate = null;
-  let cursor = today;
-  for (let i = 0; i < 1000; i++) {
-    if (log[cursor]) {
-      lastDate = cursor;
-      break;
-    }
-    cursor = isoAddDays(cursor, -1);
-    if (i > 2) break; // só aceitamos gap de até 1 dia (hoje sem registro ainda é ok)
+  if (log[today]) {
+    lastDate = today;
+  } else {
+    const ontem = isoAddDays(today, -1);
+    if (log[ontem]) lastDate = ontem;
   }
 
   if (!lastDate) return { count: 0, flame: false };
@@ -207,6 +233,64 @@ function showToast(msg) {
   toastTimeout = setTimeout(() => el.remove(), 2600);
 }
 
+/* ---------- gatinho do dia (modal) ---------- */
+
+function openGatoDoDiaModal() {
+  const gato = gatoDoDia();
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop cat-modal-backdrop";
+
+  const sheet = document.createElement("div");
+  sheet.className = "cat-modal-sheet";
+  sheet.innerHTML = `
+    <p class="modal-title cat-modal-title">gatinho do dia <3</p>
+    <div class="cat-image-wrap">
+      <img src="${gato}" class="cat-image" alt="gatinho do dia">
+    </div>
+    <button class="btn-primary cat-close-btn">fechar</button>
+  `;
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+
+  // dispara a animação (fade-in do fundo, depois do gatinho) só na abertura
+  requestAnimationFrame(() => backdrop.classList.add("show"));
+
+  const close = () => backdrop.remove();
+  sheet.querySelector(".cat-close-btn").addEventListener("click", close);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close();
+  });
+}
+
+/* ---------- confirmação genérica (modal) ---------- */
+
+function openConfirmModal(title, message, confirmLabel, onConfirm) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  const sheet = document.createElement("div");
+  sheet.className = "modal-sheet";
+  sheet.innerHTML = `
+    <p class="modal-title">${title}</p>
+    <p style="color:var(--muted);font-size:14px;margin:0 0 18px 0;line-height:1.5;">${message}</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="confirm-cancel">cancelar</button>
+      <button class="btn-primary" id="confirm-ok" style="background:#e0455f;">${confirmLabel}</button>
+    </div>
+  `;
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+
+  sheet.querySelector("#confirm-cancel").addEventListener("click", () => backdrop.remove());
+  sheet.querySelector("#confirm-ok").addEventListener("click", () => {
+    backdrop.remove();
+    onConfirm();
+  });
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+}
+
 /* ---------- render root ---------- */
 
 function render() {
@@ -229,6 +313,7 @@ function renderHome() {
   const phraseCard = document.createElement("div");
   phraseCard.className = "phrase-card";
   phraseCard.textContent = fraseDoDia();
+  phraseCard.addEventListener("click", () => openGatoDoDiaModal());
   wrap.appendChild(phraseCard);
 
   const { count, flame } = computeStreak();
@@ -519,7 +604,7 @@ function openNewExerciseModal(onCreate) {
   const sheet = document.createElement("div");
   sheet.className = "modal-sheet";
   sheet.innerHTML = `
-    <p class="modal-title">Novo exercício</p>
+    <p class="modal-title">novo exercício</p>
     <div class="field">
       <label>nome</label>
       <input type="text" id="f-name" placeholder="ex: supino reto">
@@ -558,6 +643,55 @@ function openNewExerciseModal(onCreate) {
   });
 }
 
+/* ---------- excluir exercício da biblioteca ---------- */
+
+function countUsosExercicio(exerciseId) {
+  const dayPlans = load(STORAGE_KEYS.dayPlans, {});
+  let count = 0;
+  Object.values(dayPlans).forEach((plan) => {
+    (plan || []).forEach((item) => {
+      if (item.exerciseId === exerciseId) count++;
+    });
+  });
+  return count;
+}
+
+function deleteExercicioDaBiblioteca(exerciseId) {
+  // remove definitivamente da biblioteca
+  const exercises = load(STORAGE_KEYS.exercises, []).filter((e) => e.id !== exerciseId);
+  save(STORAGE_KEYS.exercises, exercises);
+
+  // remove as referências desse exercício em todos os treinos/semana
+  const dayPlans = load(STORAGE_KEYS.dayPlans, {});
+  Object.keys(dayPlans).forEach((diaId) => {
+    dayPlans[diaId] = (dayPlans[diaId] || []).filter((item) => item.exerciseId !== exerciseId);
+  });
+  save(STORAGE_KEYS.dayPlans, dayPlans);
+
+  // remove o histórico associado, já que o exercício não existe mais
+  const history = load(STORAGE_KEYS.history, {});
+  delete history[exerciseId];
+  save(STORAGE_KEYS.history, history);
+}
+
+function confirmarExclusaoExercicio(ex, onDeleted) {
+  const usos = countUsosExercicio(ex.id);
+  const aviso =
+    usos > 0
+      ? `esse exercício está em ${usos} treino${usos === 1 ? "" : "s"} da semana. ao excluir, ele será removido de lá também. `
+      : "";
+  openConfirmModal(
+    "excluir exercício?",
+    `${aviso}tem certeza que quer excluir "${ex.name}" da biblioteca? essa ação não pode ser desfeita.`,
+    "excluir",
+    () => {
+      deleteExercicioDaBiblioteca(ex.id);
+      showToast("exercício excluído da biblioteca");
+      onDeleted();
+    }
+  );
+}
+
 /* ---------- biblioteca ---------- */
 
 function renderBiblioteca() {
@@ -579,17 +713,39 @@ function renderBiblioteca() {
   }
 
   exercises.forEach((ex) => {
-    const item = document.createElement("button");
+    const item = document.createElement("div");
     item.className = "exercise-list-item";
-    item.style.width = "100%";
-    item.innerHTML = `
+
+    const openBtn = document.createElement("button");
+    openBtn.className = "exercise-list-open";
+    openBtn.innerHTML = `
       <div style="text-align:left">
         <div class="exercise-list-name">${ex.name}</div>
         <div class="exercise-list-muscle">${ex.muscleGroup || "Sem grupo definido"}</div>
       </div>
-      <span>›</span>
     `;
-    item.addEventListener("click", () => navigate(`#exercicio/${ex.id}`));
+    openBtn.addEventListener("click", () => navigate(`#exercicio/${ex.id}`));
+    item.appendChild(openBtn);
+
+    const actions = document.createElement("div");
+    actions.className = "exercise-list-actions";
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "exercise-list-delete";
+    delBtn.setAttribute("aria-label", "excluir exercício");
+    delBtn.textContent = "🗑";
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      confirmarExclusaoExercicio(ex, () => render());
+    });
+    actions.appendChild(delBtn);
+
+    const chevron = document.createElement("span");
+    chevron.textContent = "›";
+    chevron.style.color = "var(--muted)";
+    actions.appendChild(chevron);
+
+    item.appendChild(actions);
     wrap.appendChild(item);
   });
 
@@ -618,8 +774,15 @@ function renderExercicio(exerciseId) {
 
   const topBar = document.createElement("div");
   topBar.className = "top-bar";
-  topBar.innerHTML = `<button class="back-btn">←</button><h1 class="page-title">${ex.name}</h1>`;
+  topBar.innerHTML = `
+    <button class="back-btn">←</button>
+    <h1 class="page-title" style="flex:1;">${ex.name}</h1>
+    <button class="back-btn" id="btn-del-exercicio" aria-label="excluir exercício">🗑</button>
+  `;
   topBar.querySelector(".back-btn").addEventListener("click", () => navigate("#biblioteca"));
+  topBar.querySelector("#btn-del-exercicio").addEventListener("click", () => {
+    confirmarExclusaoExercicio(ex, () => navigate("#biblioteca"));
+  });
   wrap.appendChild(topBar);
 
   const card = document.createElement("div");

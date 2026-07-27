@@ -345,12 +345,43 @@ table.set-table td {
 .exercise-list-item {
   background: var(--card);
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 0;
   margin-bottom: 10px;
   box-shadow: 0 4px 14px rgba(0,0,0,0.06);
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.exercise-list-open {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 14px 0 14px 16px;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.exercise-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 16px 14px 8px;
+}
+
+.exercise-list-delete {
+  background: none;
+  border: none;
+  font-size: 16px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  opacity: 0.55;
+}
+
+.exercise-list-delete:active {
+  opacity: 0.9;
+  background: #fdeef2;
 }
 
 .exercise-list-name {
@@ -479,4 +510,81 @@ table.set-table td {
   margin-bottom: 8px;
   font-size: 14px;
   font-weight: 600;
+}
+
+/* ---------- watermark ---------- */
+
+.watermark {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(8px + var(--safe-bottom));
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 10;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- gatinho do dia (modal) ---------- */
+
+.phrase-card {
+  cursor: pointer;
+}
+
+.cat-modal-backdrop {
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 250ms ease-out;
+}
+
+.cat-modal-backdrop.show {
+  opacity: 1;
+}
+
+.cat-modal-sheet {
+  background: white;
+  width: 82%;
+  max-width: 340px;
+  border-radius: 24px;
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.28);
+}
+
+.cat-modal-title {
+  text-align: center;
+}
+
+.cat-image-wrap {
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--pink-soft);
+}
+
+.cat-image {
+  display: block;
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(0.96);
+  animation: catFadeIn 420ms ease-out forwards;
+  animation-delay: 120ms;
+}
+
+@keyframes catFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.cat-close-btn {
+  width: 100%;
+  margin-top: 16px;
 }
